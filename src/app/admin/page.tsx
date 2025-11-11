@@ -19,6 +19,13 @@ interface Stats {
   pendingRequests: number;
 }
 
+interface TopTextbook {
+  id: string;
+  name: string;
+  totalClicks: number;
+  fileCount: number;
+}
+
 export default function AdminDashboardPage() {
   const [stats, setStats] = useState<Stats>({
     totalVisitors: 0,
@@ -26,33 +33,77 @@ export default function AdminDashboardPage() {
     activeTextbooks: 0,
     pendingRequests: 0,
   });
+  const [topTextbooks, setTopTextbooks] = useState<TopTextbook[]>([]);
   const [loading, setLoading] = useState(true);
+  const [topTextbooksLoading, setTopTextbooksLoading] = useState(true);
   const [lastSync, setLastSync] = useState<string>('');
 
   const loadStats = async () => {
     setLoading(true);
     try {
-      // TODO: 실제 API 호출로 교체
-      // 임시 데이터
-      await new Promise(resolve => setTimeout(resolve, 500));
+      const response = await fetch('/api/admin/stats?period=today');
       
-      setStats({
-        totalVisitors: 1234,
-        todayDownloads: 56,
-        activeTextbooks: 10,
-        pendingRequests: 3,
-      });
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('통계 API 에러:', response.status, errorText);
+        throw new Error(`API 에러: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log('통계 API 응답:', data);
+
+      if (data.success && data.stats) {
+        setStats({
+          totalVisitors: data.stats.totalVisitors,
+          todayDownloads: data.stats.todayDownloads,
+          activeTextbooks: data.stats.activeTextbooks,
+          pendingRequests: data.stats.pendingRequests,
+        });
+      } else {
+        console.warn('예상치 못한 응답 형식:', data);
+      }
       
       setLastSync(new Date().toLocaleString('ko-KR'));
     } catch (error) {
       console.error('통계 로딩 실패:', error);
+      // 에러 발생 시 기본값 유지
+      setLastSync('에러 발생');
     } finally {
       setLoading(false);
     }
   };
 
+  const loadTopTextbooks = async () => {
+    setTopTextbooksLoading(true);
+    try {
+      const response = await fetch('/api/admin/top-textbooks?limit=5');
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('API 에러 응답:', response.status, errorText);
+        throw new Error(`API 에러: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log('인기 교재 API 응답:', data);
+
+      if (data.success && data.textbooks) {
+        setTopTextbooks(data.textbooks);
+      } else {
+        console.warn('예상치 못한 응답 형식:', data);
+        setTopTextbooks([]);
+      }
+    } catch (error) {
+      console.error('인기 교재 로딩 실패:', error);
+      setTopTextbooks([]); // 에러 시 빈 배열
+    } finally {
+      setTopTextbooksLoading(false);
+    }
+  };
+
   useEffect(() => {
     loadStats();
+    loadTopTextbooks();
   }, []);
 
   const statCards = [
@@ -190,16 +241,72 @@ export default function AdminDashboardPage() {
         </Card>
       </div>
 
+      {/* Top Textbooks */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <TrendingUp className="h-5 w-5" />
+            인기 교재 TOP 5
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {topTextbooksLoading ? (
+            <div className="space-y-3">
+              {[...Array(5)].map((_, i) => (
+                <div key={i} className="h-12 bg-muted animate-pulse rounded" />
+              ))}
+            </div>
+          ) : topTextbooks.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              아직 클릭 데이터가 없습니다
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {topTextbooks.map((textbook, index) => (
+                <div
+                  key={textbook.id}
+                  className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"
+                >
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <div className={`
+                      flex items-center justify-center w-8 h-8 rounded-full font-bold text-sm
+                      ${index === 0 ? 'bg-yellow-500 text-white' : ''}
+                      ${index === 1 ? 'bg-gray-400 text-white' : ''}
+                      ${index === 2 ? 'bg-orange-600 text-white' : ''}
+                      ${index > 2 ? 'bg-muted text-muted-foreground' : ''}
+                    `}>
+                      {index + 1}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium truncate">{textbook.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {textbook.fileCount}개 파일
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-semibold text-lg">
+                      {textbook.totalClicks.toLocaleString()}
+                    </p>
+                    <p className="text-xs text-muted-foreground">클릭</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Placeholder for Charts */}
       <Card>
         <CardHeader>
-          <CardTitle>상세 통계 (준비 중)</CardTitle>
+          <CardTitle>시간대별 접속 통계 (준비 중)</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="h-64 flex items-center justify-center text-muted-foreground">
             <div className="text-center">
               <TrendingUp className="h-12 w-12 mx-auto mb-4 opacity-20" />
-              <p>일별/주별/월별 통계 그래프가 여기 표시됩니다</p>
+              <p>24시간 접속 그래프가 여기 표시됩니다</p>
               <p className="text-sm mt-2">곧 추가 예정</p>
             </div>
           </div>

@@ -6,6 +6,7 @@ import { useFile } from '@/contexts/FileContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import RequestTextbookDialog from '@/components/RequestTextbookDialog';
 import { 
   ChevronRight, 
   ChevronDown, 
@@ -14,7 +15,8 @@ import {
   Search,
   RefreshCw,
   Flame,
-  Book
+  Book,
+  BookPlus
 } from 'lucide-react';
 
 interface FileItem {
@@ -43,6 +45,7 @@ export default function LeftSidebar() {
   const [sortBy, setSortBy] = useState<'name' | 'clicks'>('name');
   const [loading, setLoading] = useState(true);
   const [lastSync, setLastSync] = useState<string>('');
+  const [requestDialogOpen, setRequestDialogOpen] = useState(false);
 
   // 데이터 로드
   const loadData = async () => {
@@ -96,6 +99,29 @@ export default function LeftSidebar() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sortBy]);
 
+  // 파일 클릭 처리 (클릭 추적 + 파일 선택)
+  const handleFileClick = async (file: FileItem) => {
+    // 1. 파일 선택 (PDF 뷰어에 표시)
+    selectFile(file);
+
+    // 2. 클릭 추적 (비동기, 백그라운드)
+    try {
+      await fetch('/api/track/click', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          fileId: file.id,
+        }),
+      });
+      // 성공/실패 관계없이 UI에는 영향 없음 (로깅만)
+    } catch (error) {
+      console.error('클릭 추적 실패:', error);
+      // 에러가 나도 파일 뷰어는 정상 작동
+    }
+  };
+
   // 폴더 토글
   const toggleFolder = (path: string) => {
     const newExpanded = new Set(expandedFolders);
@@ -148,7 +174,7 @@ export default function LeftSidebar() {
                 key={file.id}
                 className="flex items-center gap-0.5 px-2 py-0.5 hover:bg-accent rounded cursor-pointer"
                 style={{ paddingLeft: `${(level + 1) * 10 + 8}px` }}
-                onClick={() => selectFile(file)}
+                onClick={() => handleFileClick(file)}
               >
                 <FileText className="w-3 h-3 flex-shrink-0 text-red-500" />
                 <span className="text-xs truncate flex-1">{file.name}</span>
@@ -213,6 +239,24 @@ export default function LeftSidebar() {
           </Button>
         </div>
       </div>
+
+      {/* 검색 결과 없을 때 요청 버튼 */}
+      {searchQuery && filteredTextbooks.length === 0 && (
+        <div className="p-4 text-center space-y-3">
+          <p className="text-sm text-muted-foreground">
+            &quot;{searchQuery}&quot;에 대한 검색 결과가 없습니다.
+          </p>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setRequestDialogOpen(true)}
+            className="gap-2"
+          >
+            <BookPlus className="w-4 h-4" />
+            이 교재 요청하기
+          </Button>
+        </div>
+      )}
 
       {/* 중앙: 교재 목록 */}
       <div className="flex-1 overflow-y-auto p-2">
@@ -292,6 +336,17 @@ export default function LeftSidebar() {
           <span className="text-green-600">✓ 동기화됨</span>
         </div>
       </div>
+
+      {/* 교재 요청 다이얼로그 */}
+      <RequestTextbookDialog
+        open={requestDialogOpen}
+        onOpenChange={setRequestDialogOpen}
+        initialTextbookName={searchQuery}
+        onSuccess={() => {
+          // 요청 성공 후 검색어 초기화
+          setSearchQuery('');
+        }}
+      />
     </div>
   );
 }
