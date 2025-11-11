@@ -20,16 +20,16 @@ export function createClient() {
 }
 
 // 싱글톤 인스턴스 (하위 호환성) - lazy initialization
-let supabaseInstance: ReturnType<typeof createSupabaseClient> | null = null;
+let supabaseInstance: any = null;
 
-export const supabase = new Proxy({} as ReturnType<typeof createSupabaseClient>, {
+export const supabase = new Proxy({} as any, {
   get(target, prop) {
     if (!supabaseInstance) {
       supabaseInstance = createClient();
     }
-    return (supabaseInstance as any)[prop];
+    return supabaseInstance[prop];
   }
-});
+}) as ReturnType<typeof createSupabaseClient>;
 
 // 서버 사이드 Supabase 클라이언트 (관리자 작업용)
 export function createServerClient() {
