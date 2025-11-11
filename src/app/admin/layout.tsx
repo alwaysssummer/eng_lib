@@ -35,25 +35,25 @@ const menuItems = [
     icon: BookOpen, 
     label: '교재 관리', 
     href: '/admin/textbooks',
-    status: 'pending'
+    status: 'ready'
   },
   { 
     icon: MessageSquare, 
     label: '요청 관리', 
     href: '/admin/requests',
-    status: 'pending'
+    status: 'ready'
   },
   { 
     icon: Megaphone, 
     label: '공지사항', 
     href: '/admin/notices',
-    status: 'pending'
+    status: 'ready'
   },
   { 
     icon: BarChart3, 
     label: '통계 분석', 
     href: '/admin/analytics',
-    status: 'pending'
+    status: 'ready'
   },
   { 
     icon: Settings, 

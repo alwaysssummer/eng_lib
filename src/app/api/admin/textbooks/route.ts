@@ -1,34 +1,40 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createApiClient } from '@/lib/supabase/api';
+import { createClient } from '@/lib/supabase/server';
 
-/**
- * GET /api/admin/textbooks
- * 교재 목록 조회 (관리자용)
- * 
- * Query Parameters:
- * - sort: 'name' | 'clicks' | 'files' | 'created_at' (기본값: 'name')
- * - order: 'asc' | 'desc' (기본값: 'asc')
- * - search: 검색어 (교재명)
- */
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
+    const supabase = await createClient();
     const { searchParams } = new URL(request.url);
-    const sortBy = searchParams.get('sort') || 'name';
-    const order = searchParams.get('order') || 'asc';
+    
+    const sort = searchParams.get('sort') || 'clicks'; // 'clicks' | 'name'
+    const order = searchParams.get('order') || 'desc'; // 'asc' | 'desc'
     const search = searchParams.get('search') || '';
 
-    // TODO: 관리자 권한 체크 (Phase 6에서 구현)
-    
-    const supabase = createApiClient();
-
-    // 1. 모든 교재 조회
+    // 교재 목록 조회 (파일 수와 총 클릭수 포함)
     let query = supabase
       .from('textbooks')
-      .select('id, name, dropbox_path, created_at');
+      .select(`
+        id,
+        name,
+        description,
+        total_clicks,
+        is_active,
+        created_at,
+        updated_at
+      `);
 
     // 검색 필터
     if (search) {
       query = query.ilike('name', `%${search}%`);
+    }
+
+    // 정렬
+    if (sort === 'name') {
+      query = query.order('name', { ascending: order === 'asc' });
+    } else {
+      query = query.order('total_clicks', { ascending: order === 'asc' });
     }
 
     const { data: textbooks, error: textbooksError } = await query;
@@ -37,98 +43,87 @@ export async function GET(request: NextRequest) {
       throw textbooksError;
     }
 
-    if (!textbooks || textbooks.length === 0) {
-      return NextResponse.json({
-        success: true,
-        textbooks: [],
-        count: 0,
-        timestamp: new Date().toISOString(),
-      });
-    }
+    // 각 교재의 파일 수 조회
+    const textbooksWithFileCount = await Promise.all(
+      (textbooks || []).map(async (textbook) => {
+        const { count, error: countError } = await supabase
+          .from('files')
+          .select('*', { count: 'exact', head: true })
+          .eq('textbook_id', textbook.id)
+          .eq('is_active', true);
 
-    // 2. 각 교재의 통계 계산
-    const textbooksWithStats = await Promise.all(
-      textbooks.map(async (textbook) => {
-        // 해당 교재의 챕터 조회
-        const { data: chapters } = await supabase
-          .from('chapters')
-          .select('id')
-          .eq('textbook_id', textbook.id);
-
-        if (!chapters || chapters.length === 0) {
-          return {
-            id: textbook.id,
-            name: textbook.name,
-            dropbox_path: textbook.dropbox_path,
-            created_at: textbook.created_at,
-            totalClicks: 0,
-            fileCount: 0,
-            chapterCount: 0,
-          };
+        if (countError) {
+          console.error('Error counting files:', countError);
+          return { ...textbook, file_count: 0 };
         }
 
-        const chapterIds = chapters.map(ch => ch.id);
-        
-        // 해당 챕터의 파일들 조회
-        const { data: files } = await supabase
-          .from('files')
-          .select('id, click_count, is_active')
-          .in('chapter_id', chapterIds);
-
-        const activeFiles = files?.filter(f => f.is_active) || [];
-        const totalClicks = activeFiles.reduce((sum, f) => sum + f.click_count, 0);
-
         return {
-          id: textbook.id,
-          name: textbook.name,
-          dropbox_path: textbook.dropbox_path,
-          created_at: textbook.created_at,
-          totalClicks,
-          fileCount: activeFiles.length,
-          chapterCount: chapters.length,
+          ...textbook,
+          file_count: count || 0,
         };
       })
     );
 
-    // 3. 정렬
-    textbooksWithStats.sort((a, b) => {
-      let compareValue = 0;
-
-      switch (sortBy) {
-        case 'clicks':
-          compareValue = a.totalClicks - b.totalClicks;
-          break;
-        case 'files':
-          compareValue = a.fileCount - b.fileCount;
-          break;
-        case 'created_at':
-          compareValue = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
-          break;
-        case 'name':
-        default:
-          compareValue = a.name.localeCompare(b.name, 'ko');
-          break;
-      }
-
-      return order === 'desc' ? -compareValue : compareValue;
-    });
-
     return NextResponse.json({
       success: true,
-      textbooks: textbooksWithStats,
-      count: textbooksWithStats.length,
-      timestamp: new Date().toISOString(),
+      textbooks: textbooksWithFileCount,
+      count: textbooksWithFileCount.length,
+      sort: { by: sort, order },
     });
-
   } catch (error) {
-    console.error('교재 목록 조회 에러:', error);
+    console.error('Error fetching textbooks:', error);
     return NextResponse.json(
-      { 
-        error: '교재 목록 조회 중 오류가 발생했습니다.',
-        details: error instanceof Error ? error.message : String(error)
-      },
+      { error: 'Failed to fetch textbooks' },
       { status: 500 }
     );
   }
 }
 
+export async function PUT(request: NextRequest) {
+  try {
+    const supabase = await createClient();
+    const body = await request.json();
+    const { id, is_active } = body;
+
+    if (!id) {
+      return NextResponse.json(
+        { error: 'Textbook ID is required' },
+        { status: 400 }
+      );
+    }
+
+    // TODO: 관리자 권한 체크 (Phase 6에서 구현)
+
+    // 교재 활성화/비활성화 업데이트
+    const { data, error } = await supabase
+      .from('textbooks')
+      .update({ 
+        is_active,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      throw error;
+    }
+
+    // 교재에 속한 파일도 함께 활성화/비활성화
+    await supabase
+      .from('files')
+      .update({ is_active })
+      .eq('textbook_id', id);
+
+    return NextResponse.json({
+      success: true,
+      textbook: data,
+    });
+  } catch (error) {
+    console.error('Error updating textbook:', error);
+    return NextResponse.json(
+      { error: 'Failed to update textbook' },
+      { status: 500 }
+    );
+  }
+}

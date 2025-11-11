@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getDropboxClient } from '@/lib/dropbox/client';
+import { getDropboxClientAsync } from '@/lib/dropbox/client';
 import { createApiClient } from '@/lib/supabase/server';
 
 /**
@@ -35,8 +35,8 @@ export async function GET(request: Request) {
       );
     }
 
-    // 2. Dropbox에서 파일 다운로드
-    const dbx = getDropboxClient();
+    // 2. Dropbox에서 파일 다운로드 (자동 토큰 갱신)
+    const dbx = await getDropboxClientAsync();
     
     try {
       console.log(`[Proxy] 파일 요청: ${file.name} (다운로드: ${isDownload})`);

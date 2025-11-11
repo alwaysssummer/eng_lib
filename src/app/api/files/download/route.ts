@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getDropboxClient } from '@/lib/dropbox/client';
+import { getDropboxClientAsync } from '@/lib/dropbox/client';
 import { createApiClient } from '@/lib/supabase/server';
 
 /**
@@ -34,8 +34,8 @@ export async function GET(request: Request) {
       );
     }
 
-    // 2. Dropbox 임시 링크 생성 (4시간 유효)
-    const dbx = getDropboxClient();
+    // 2. Dropbox 임시 링크 생성 (자동 토큰 갱신)
+    const dbx = await getDropboxClientAsync();
     
     try {
       console.log(`[Download] 파일 요청: ${file.name}`);

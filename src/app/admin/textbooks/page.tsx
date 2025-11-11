@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -13,205 +12,201 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { 
-  BookOpen, 
-  Search, 
-  ArrowUpDown, 
-  Eye,
-  RefreshCw 
-} from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { ArrowUpDown, Search, BookOpen, Eye } from 'lucide-react';
 import Link from 'next/link';
 
 interface Textbook {
   id: string;
   name: string;
-  dropbox_path: string;
+  description: string | null;
+  total_clicks: number;
+  is_active: boolean;
+  file_count: number;
   created_at: string;
-  totalClicks: number;
-  fileCount: number;
-  chapterCount: number;
+  updated_at: string;
 }
 
-type SortField = 'name' | 'clicks' | 'files' | 'created_at';
-type SortOrder = 'asc' | 'desc';
-
-export default function AdminTextbooksPage() {
+export default function TextbooksPage() {
   const [textbooks, setTextbooks] = useState<Textbook[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [sortField, setSortField] = useState<SortField>('name');
-  const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
+  const [sortBy, setSortBy] = useState<'clicks' | 'name'>('clicks');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
-  const loadTextbooks = async () => {
+  const fetchTextbooks = async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams({
-        sort: sortField,
+        sort: sortBy,
         order: sortOrder,
-        ...(search && { search }),
+        search,
       });
 
       const response = await fetch(`/api/admin/textbooks?${params}`);
       const data = await response.json();
 
-      if (!response.ok) {
-        throw new Error(data.error || '교재 목록 조회 실패');
-      }
-
-      if (data.success && data.textbooks) {
+      if (data.success) {
         setTextbooks(data.textbooks);
       }
     } catch (error) {
-      console.error('교재 로딩 실패:', error);
+      console.error('Error fetching textbooks:', error);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadTextbooks();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sortField, sortOrder]);
+    fetchTextbooks();
+  }, [sortBy, sortOrder, search]);
 
-  const handleSort = (field: SortField) => {
-    if (sortField === field) {
-      // 같은 필드 클릭 시 order 토글
-      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-    } else {
-      // 다른 필드 클릭 시 해당 필드로 변경하고 asc
-      setSortField(field);
-      setSortOrder('asc');
+  const toggleActive = async (id: string, currentStatus: boolean) => {
+    try {
+      const response = await fetch('/api/admin/textbooks', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, is_active: !currentStatus }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        // 목록 새로고침
+        fetchTextbooks();
+      }
+    } catch (error) {
+      console.error('Error toggling textbook status:', error);
     }
   };
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    loadTextbooks();
+  const toggleSort = (field: 'clicks' | 'name') => {
+    if (sortBy === field) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortBy(field);
+      setSortOrder('desc');
+    }
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('ko-KR', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-    });
-  };
-
-  const getSortIcon = (field: SortField) => {
-    if (sortField !== field) {
-      return <ArrowUpDown className="h-4 w-4 ml-1 text-muted-foreground" />;
-    }
-    return sortOrder === 'asc' 
-      ? <ArrowUpDown className="h-4 w-4 ml-1 text-primary" />
-      : <ArrowUpDown className="h-4 w-4 ml-1 text-primary rotate-180" />;
+    return new Date(dateString).toLocaleDateString('ko-KR');
   };
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">교재 관리</h1>
-          <p className="text-muted-foreground">
-            교재별 통계 및 상세 정보를 확인하세요
-          </p>
+      <div>
+        <h1 className="text-3xl font-bold mb-2">교재 관리</h1>
+        <p className="text-muted-foreground">
+          교재별 상세 통계 및 활성화 관리
+        </p>
+      </div>
+
+      {/* 통계 카드 */}
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">전체 교재</CardTitle>
+            <BookOpen className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{textbooks.length}</div>
+            <p className="text-xs text-muted-foreground">
+              활성: {textbooks.filter(t => t.is_active).length}개
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">전체 클릭수</CardTitle>
+            <Eye className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {textbooks.reduce((sum, t) => sum + t.total_clicks, 0).toLocaleString()}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              전체 교재 누적
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">전체 파일</CardTitle>
+            <BookOpen className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {textbooks.reduce((sum, t) => sum + t.file_count, 0)}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              PDF 파일
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* 검색 */}
+      <div className="flex gap-2">
+        <div className="relative flex-1">
+          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="교재명 검색..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-8"
+          />
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={loadTextbooks}
-          disabled={loading}
-        >
-          <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+        <Button onClick={fetchTextbooks} variant="outline">
           새로고침
         </Button>
       </div>
 
-      {/* Search Bar */}
-      <Card>
-        <CardContent className="pt-6">
-          <form onSubmit={handleSearch} className="flex gap-2">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="교재명 검색..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-            <Button type="submit" disabled={loading}>
-              검색
-            </Button>
-            {search && (
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  setSearch('');
-                  setTimeout(loadTextbooks, 0);
-                }}
-              >
-                초기화
-              </Button>
-            )}
-          </form>
-        </CardContent>
-      </Card>
-
-      {/* Textbooks Table */}
+      {/* 교재 목록 테이블 */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <BookOpen className="h-5 w-5" />
-            교재 목록 ({textbooks.length})
-          </CardTitle>
+          <CardTitle>교재 목록</CardTitle>
+          <CardDescription>
+            교재를 클릭하면 상세 통계를 확인할 수 있습니다
+          </CardDescription>
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="space-y-3">
-              {[...Array(5)].map((_, i) => (
-                <div key={i} className="h-16 bg-muted animate-pulse rounded" />
-              ))}
+            <div className="text-center py-8 text-muted-foreground">
+              로딩 중...
             </div>
           ) : textbooks.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground">
-              {search ? '검색 결과가 없습니다.' : '등록된 교재가 없습니다.'}
+            <div className="text-center py-8 text-muted-foreground">
+              교재가 없습니다
             </div>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead 
-                    className="cursor-pointer hover:bg-muted/50"
-                    onClick={() => handleSort('name')}
-                  >
-                    <div className="flex items-center">
+                  <TableHead>
+                    <Button
+                      variant="ghost"
+                      onClick={() => toggleSort('name')}
+                      className="flex items-center gap-1"
+                    >
                       교재명
-                      {getSortIcon('name')}
-                    </div>
+                      <ArrowUpDown className="h-4 w-4" />
+                    </Button>
                   </TableHead>
-                  <TableHead 
-                    className="cursor-pointer hover:bg-muted/50 text-center"
-                    onClick={() => handleSort('clicks')}
-                  >
-                    <div className="flex items-center justify-center">
-                      총 클릭수
-                      {getSortIcon('clicks')}
-                    </div>
+                  <TableHead>
+                    <Button
+                      variant="ghost"
+                      onClick={() => toggleSort('clicks')}
+                      className="flex items-center gap-1"
+                    >
+                      클릭수
+                      <ArrowUpDown className="h-4 w-4" />
+                    </Button>
                   </TableHead>
-                  <TableHead className="text-center">
-                    챕터/파일
-                  </TableHead>
-                  <TableHead 
-                    className="cursor-pointer hover:bg-muted/50 text-center"
-                    onClick={() => handleSort('created_at')}
-                  >
-                    <div className="flex items-center justify-center">
-                      등록일
-                      {getSortIcon('created_at')}
-                    </div>
-                  </TableHead>
+                  <TableHead>파일 수</TableHead>
+                  <TableHead>상태</TableHead>
+                  <TableHead>생성일</TableHead>
                   <TableHead className="text-right">작업</TableHead>
                 </TableRow>
               </TableHeader>
@@ -221,21 +216,30 @@ export default function AdminTextbooksPage() {
                     <TableCell className="font-medium">
                       {textbook.name}
                     </TableCell>
-                    <TableCell className="text-center">
-                      <Badge variant={textbook.totalClicks > 0 ? 'default' : 'secondary'}>
-                        {textbook.totalClicks.toLocaleString()}
+                    <TableCell>
+                      <Badge variant="secondary">
+                        {textbook.total_clicks.toLocaleString()}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-center text-sm text-muted-foreground">
-                      {textbook.chapterCount}개 / {textbook.fileCount}개
+                    <TableCell>{textbook.file_count}개</TableCell>
+                    <TableCell>
+                      <Badge variant={textbook.is_active ? 'default' : 'outline'}>
+                        {textbook.is_active ? '활성' : '비활성'}
+                      </Badge>
                     </TableCell>
-                    <TableCell className="text-center text-sm text-muted-foreground">
+                    <TableCell className="text-muted-foreground">
                       {formatDate(textbook.created_at)}
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right space-x-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => toggleActive(textbook.id, textbook.is_active)}
+                      >
+                        {textbook.is_active ? '비활성화' : '활성화'}
+                      </Button>
                       <Link href={`/admin/textbooks/${textbook.id}`}>
-                        <Button variant="outline" size="sm">
-                          <Eye className="h-4 w-4 mr-1" />
+                        <Button variant="default" size="sm">
                           상세보기
                         </Button>
                       </Link>

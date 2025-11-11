@@ -1,4 +1,4 @@
-import { getDropboxClient } from './client';
+import { getDropboxClientAsync } from './client';
 import { createApiClient } from '@/lib/supabase/server';
 import { files } from 'dropbox';
 
@@ -45,7 +45,7 @@ export async function fullSync(rootPath?: string): Promise<{
   filesDeleted: number;
   errors: string[];
 }> {
-  const dbx = getDropboxClient();
+  const dbx = await getDropboxClientAsync();
   
   // rootPath가 제공되지 않으면 환경 변수에서 가져오기
   const syncPath = rootPath || process.env.DROPBOX_ROOT_PATH || '';
@@ -237,7 +237,7 @@ export async function incrementalSync(): Promise<{
   filesDeleted: number;
   errors: string[];
 }> {
-  const dbx = getDropboxClient();
+  const dbx = await getDropboxClientAsync();
   const results = {
     success: true,
     changesProcessed: 0,
