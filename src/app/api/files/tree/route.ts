@@ -2,12 +2,44 @@ import { NextResponse } from 'next/server';
 import { createApiClient } from '@/lib/supabase/api';
 
 /**
+ * 빈 폴더 제거 (재귀적으로 파일이 없는 폴더 삭제)
+ */
+function removeEmptyFolders(obj: any): any {
+  if (!obj || typeof obj !== 'object') {
+    return obj;
+  }
+  
+  const result: any = {};
+  
+  for (const key in obj) {
+    if (key === '_files') {
+      // 파일 배열은 그대로 유지
+      if (obj[key] && obj[key].length > 0) {
+        result[key] = obj[key];
+      }
+    } else {
+      // 하위 폴더는 재귀적으로 정리
+      const cleaned = removeEmptyFolders(obj[key]);
+      
+      // 하위에 파일이나 폴더가 있으면 유지
+      if (cleaned && (cleaned._files?.length > 0 || Object.keys(cleaned).length > 0)) {
+        result[key] = cleaned;
+      }
+      // 빈 폴더는 제거 (아무것도 추가하지 않음)
+    }
+  }
+  
+  return result;
+}
+
+/**
  * 파일 트리 구조 조회 (교재별 클릭수 포함)
  * GET /api/files/tree
  * 
  * 개선 사항:
  * - 활성화된 파일만 조회 (is_active = true)
  * - 파일이 없는 교재는 자동 제외
+ * - 빈 폴더 자동 제거
  * - 직관적이고 안정적인 데이터 처리
  */
 export async function GET(request: Request) {
@@ -155,14 +187,20 @@ export async function GET(request: Request) {
       };
     });
     
-    console.log(`[Files Tree] 트리 구조 생성 완료, 최종 교재 수: ${tree.length}`);
+    // 6. 빈 폴더 제거 (파일이 없는 폴더는 표시하지 않음)
+    const cleanTree = tree.map(textbook => ({
+      ...textbook,
+      children: removeEmptyFolders(textbook.children),
+    }));
+    
+    console.log(`[Files Tree] 트리 구조 생성 완료, 최종 교재 수: ${cleanTree.length}`);
     
     return NextResponse.json({
       success: true,
-      data: tree,
+      data: cleanTree,
       sortBy,
       stats: {
-        totalTextbooks: tree.length,
+        totalTextbooks: cleanTree.length,
         totalFiles: activeFiles?.length || 0,
       },
     });
