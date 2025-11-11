@@ -9,7 +9,7 @@ import { incrementalSync } from '@/lib/dropbox/sync';
  * {
  *   "crons": [{
  *     "path": "/api/sync/cron",
- *     "schedule": "*/5 * * * *"
+ *     "schedule": "every 5 minutes"
  *   }]
  * }
  */
