@@ -63,6 +63,7 @@ export default function LeftSidebar() {
 
   useEffect(() => {
     loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sortBy]);
 
   // Supabase Realtime 구독
@@ -92,6 +93,7 @@ export default function LeftSidebar() {
     return () => {
       supabase.removeChannel(channel);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sortBy]);
 
   // 폴더 토글

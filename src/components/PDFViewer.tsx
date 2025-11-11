@@ -33,6 +33,7 @@ export default function PDFViewer() {
     }
 
     loadPDF();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedFile]);
 
   const loadPDF = async () => {
@@ -161,7 +162,7 @@ export default function PDFViewer() {
               <div className="text-red-600 dark:text-red-400 flex-shrink-0 text-lg">⚠️</div>
               <p className="text-sm text-red-900 dark:text-red-100">
                 <span className="font-bold">PDF 미리보기가 안 보이나요?</span>
-                <span className="hidden sm:inline"> Chrome 설정에서 "<span className="font-semibold">Chrome에서 PDF 열기</span>"를 켜주세요.</span>
+                <span className="hidden sm:inline"> Chrome 설정에서 &quot;<span className="font-semibold">Chrome에서 PDF 열기</span>&quot;를 켜주세요.</span>
               </p>
             </div>
             <div className="flex items-center gap-2 flex-shrink-0">

@@ -193,7 +193,7 @@ export default function TestTokenPage() {
                     <p className="text-sm font-semibold mt-2">해결 방법:</p>
                     <ol className="text-sm text-muted-foreground list-decimal list-inside">
                       <li>Dropbox App Console 접속</li>
-                      <li>Settings → "Generate access token" 클릭</li>
+                      <li>Settings → &quot;Generate access token&quot; 클릭</li>
                       <li>새 장기 토큰을 .env.local에 저장</li>
                     </ol>
                   </div>
