@@ -1,0 +1,8 @@
+---
+alwaysApply: true
+---
+When in Ask/Chat mode:
+- Provide conceptual explanations without code examples by default
+- Only show code if explicitly requested with "show me code" or "give me an example"
+- Focus on architecture, approach, and design patterns
+- Keep responses concise and high-level
