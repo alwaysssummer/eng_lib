@@ -112,13 +112,23 @@ export async function GET(request: Request) {
         const path = file.dropbox_path || '';
         const parts = path.split('/').filter(Boolean);
         
-        // 경로 구조 생성 (교재 다음 폴더들)
+        // 경로 구조 생성 (DROPBOX_ROOT_PATH 이후부터 시작)
+        const rootPath = process.env.DROPBOX_ROOT_PATH || '';
+        let relativePath = path;
+        if (rootPath && path.toLowerCase().startsWith(rootPath.toLowerCase())) {
+          relativePath = path.substring(rootPath.length);
+        }
+        
+        const relativeParts = relativePath.split('/').filter(Boolean);
+        
+        // 첫 번째 부분은 교재명이어야 함 (건너뛰기)
         let current = acc;
-        for (let i = 1; i < parts.length - 1; i++) {
-          const folderName = parts[i];
+        for (let i = 1; i < relativeParts.length - 1; i++) {
+          const folderName = relativeParts[i];
           
-          // 교재명과 동일한 폴더명이면 스킵 (중복 방지)
-          if (folderName === textbook.name) {
+          // 교재명과 동일한 폴더명이면 스킵 (중복 방지, 대소문자 무시)
+          if (folderName.toLowerCase() === textbook.name.toLowerCase()) {
+            console.log(`[Files Tree] 중복 폴더 스킵: ${folderName} (교재: ${textbook.name})`);
             continue;
           }
           
