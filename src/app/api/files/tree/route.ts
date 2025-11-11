@@ -33,6 +33,31 @@ function removeEmptyFolders(obj: any): any {
 }
 
 /**
+ * 트리 구조에 파일이 있는지 재귀적으로 확인
+ */
+function hasAnyFiles(obj: any): boolean {
+  if (!obj || typeof obj !== 'object') {
+    return false;
+  }
+  
+  // _files 배열이 있고 비어있지 않으면 true
+  if (obj._files && Array.isArray(obj._files) && obj._files.length > 0) {
+    return true;
+  }
+  
+  // 하위 폴더를 재귀적으로 확인
+  for (const key in obj) {
+    if (key !== '_files') {
+      if (hasAnyFiles(obj[key])) {
+        return true;
+      }
+    }
+  }
+  
+  return false;
+}
+
+/**
  * 파일 트리 구조 조회 (교재별 클릭수 포함)
  * GET /api/files/tree
  * 
@@ -193,14 +218,23 @@ export async function GET(request: Request) {
       children: removeEmptyFolders(textbook.children),
     }));
     
-    console.log(`[Files Tree] 트리 구조 생성 완료, 최종 교재 수: ${cleanTree.length}`);
+    // 7. 빈 교재 제거 (파일이 하나도 없는 교재는 표시하지 않음)
+    const finalTree = cleanTree.filter(textbook => {
+      const hasFiles = hasAnyFiles(textbook.children);
+      if (!hasFiles) {
+        console.log(`[Files Tree] 빈 교재 제거: ${textbook.name} (파일 없음)`);
+      }
+      return hasFiles;
+    });
+    
+    console.log(`[Files Tree] 트리 구조 생성 완료, 최종 교재 수: ${finalTree.length}`);
     
     return NextResponse.json({
       success: true,
-      data: cleanTree,
+      data: finalTree,
       sortBy,
       stats: {
-        totalTextbooks: cleanTree.length,
+        totalTextbooks: finalTree.length,
         totalFiles: activeFiles?.length || 0,
       },
     });
