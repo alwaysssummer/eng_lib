@@ -82,10 +82,10 @@ export default function RightSidebar() {
     }
   };
 
-  // 교재 요청 목록 로드
+  // 교재 요청 목록 로드 (pending 상태만)
   const loadRequests = async () => {
     try {
-      const response = await fetch('/api/requests?limit=5');
+      const response = await fetch('/api/admin/requests?status=pending&sort=request_count&order=desc');
       
       if (!response.ok) {
         console.error('요청 목록 API 에러:', response.status);
@@ -96,7 +96,8 @@ export default function RightSidebar() {
       const data = await response.json();
 
       if (data.success) {
-        setRequests(data.requests || []);
+        // TOP 5만 표시
+        setRequests((data.requests || []).slice(0, 5));
       } else {
         console.error('요청 목록 로드 실패:', data.error);
       }
