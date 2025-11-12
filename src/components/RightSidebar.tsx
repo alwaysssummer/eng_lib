@@ -49,7 +49,7 @@ export default function RightSidebar() {
         .select(`
           id,
           clicked_at,
-          files:file_id (
+          files!inner:file_id (
             id,
             name,
             click_count
@@ -68,9 +68,10 @@ export default function RightSidebar() {
       const seenFileIds = new Set<string>();
 
       for (const item of data || []) {
-        if (item.files && !seenFileIds.has(item.files.id)) {
+        const fileData = item.files as any;
+        if (fileData && typeof fileData === 'object' && fileData.id && !seenFileIds.has(fileData.id)) {
           uniqueFiles.push(item as RecentFile);
-          seenFileIds.add(item.files.id);
+          seenFileIds.add(fileData.id);
         }
       }
 
