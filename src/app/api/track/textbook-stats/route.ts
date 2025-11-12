@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createApiClient } from '@/lib/supabase/server';
 
 /**
  * GET /api/track/textbook-stats
@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
     const sortBy = searchParams.get('sort') || 'name'; // 'name' | 'clicks'
     const order = searchParams.get('order') || 'asc'; // 'asc' | 'desc'
 
-    const supabase = createClient();
+    const supabase = createApiClient();
 
     // 1. 교재별 클릭수 집계
     const { data: textbooks, error } = await supabase

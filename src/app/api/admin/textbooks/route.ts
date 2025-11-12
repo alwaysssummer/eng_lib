@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createApiClient } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient();
+    const supabase = createApiClient();
     const { searchParams } = new URL(request.url);
     
     const sort = searchParams.get('sort') || 'clicks'; // 'clicks' | 'name'
@@ -81,7 +81,7 @@ export async function GET(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const supabase = await createClient();
+    const supabase = createApiClient();
     const body = await request.json();
     const { id, is_active } = body;
 

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createApiClient } from '@/lib/supabase/server';
 
 /**
  * POST /api/track/click
@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const supabase = createClient();
+    const supabase = createApiClient();
 
     // 1. 파일 존재 여부 확인
     const { data: file, error: fileError } = await supabase
