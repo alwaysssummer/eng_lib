@@ -92,7 +92,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const limit = parseInt(searchParams.get('limit') || '10');
 
-    const supabase = createClient();
+    const supabase = createApiClient();
 
     const { data: clicks, error } = await supabase
       .from('file_clicks')
